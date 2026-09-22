@@ -16,8 +16,14 @@ async def group_listener(
 ):
     text = update.message.text
 
-    if "کیر" in text:
+    if "کیر" in text or "kir" in text:
         await update.message.reply_text("کیر رضا پهلوی 💦💦💦")
+    elif "کص" in text or "kos" in text:
+        await update.message.reply_text("کص رضا پهلوی 🤓")
+    elif "کونی" in text or "koni" in text:
+        await update.message.reply_text("جوووون کی اینجا کونیه؟؟؟؟ 🤗")
+    elif "مندل" in text or "mendel" in text:
+        await update.message.reply_text("بر مندل گویان صلوات🙃")
 
 
 def main():
