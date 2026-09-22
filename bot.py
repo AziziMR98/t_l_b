@@ -1,6 +1,7 @@
 import os
 import json
 import random
+from datetime import datetime, timezone
 
 from telegram import Update
 from telegram.ext import (
@@ -13,15 +14,20 @@ from telegram.ext import (
 
 
 # =========================================================
-# CONFIG
+# تنظیمات
 # =========================================================
 
 TOKEN = os.getenv("BOT_TOKEN")
+
 STATS_FILE = "stats.json"
+LAST_ACTIVITY_FILE = "last_activity.json"
+
+# اگر گروه بیشتر از این مقدار ساعت ساکت باشد، ربات واکنش می‌دهد
+INACTIVITY_HOURS = 15
 
 
 # =========================================================
-# MEMBERS
+# اعضای گروه
 # =========================================================
 
 MEMBERS = [
@@ -33,7 +39,7 @@ MEMBERS = [
 
 
 # =========================================================
-# TRIGGER RESPONSES
+# پاسخ به کلمات خاص
 # =========================================================
 
 RESPONSES = {
@@ -53,6 +59,62 @@ RESPONSES = {
         "مندل... کلمه‌ای که نیاز به توضیح ندارد.",
     ],
 
+    "یا علی": [
+        "یا علی مدد، فرار آغاز شد 😂",
+        "یا علی گفت و رفت؛ خدا به گروه صبر بده 💀",
+        "یا علی؟! یعنی باز یکی داره در میره؟ 👀",
+        "یا علی مدد، به سلامت پهلوان 🤣",
+        "یا علی گفتی؟ برو، ولی برمی‌گردی 😂",
+        "یا علی مدد؛ عملیات خروج با موفقیت آغاز شد 🚪",
+        "یا علی… رفت که رفت 😌",
+        "یا علی مدد، جای شما تا اطلاع ثانوی خالی 😂",
+        "یا علی گفت و از صحنه گریخت 💨",
+        "به سلامت؛ یا علی مدد 😎",
+    ],
+    
+    "لاشی": [
+        "یه نفر خیلی رو فرم اومده انگار 😂",
+        "اسم نمی‌بریم ولی خودش می‌دونه 👀",
+        "باز یه نفر داره رزومه‌شو رو می‌کنه 🤣",
+        "من چیزی نگفتم، شما چیزی شنیدید؟ 😌",
+        "متهم فعلاً تحت نظره 🕵️",
+        "یه بویی میاد... بوی لاشی‌گری 😂",
+        "یکی انگار زیادی راحت گرفته 💀",
+        "جلسه بررسی لاشی‌گری رسماً آغاز شد 🤣",
+    ],
+    
+    "بیشرف": [
+        "به‌به، یکی خیلی دلش پره انگار 😂",
+        "اسم کسی برده نشد ولی فضا سنگین شد 💀",
+        "دادگاه هنوز رأی نهایی رو صادر نکرده 🤣",
+        "یه نفر داره احساساتش رو صادقانه بیان می‌کنه 😂",
+        "من فقط ناظر ماجرا هستم 👀",
+        "متهم لطفاً آرامش خود را حفظ کند 😌",
+        "اتهام سنگینی مطرح شد؛ تحقیقات ادامه دارد 🕵️",
+        "ظاهراً یکی پرونده‌ای برای یکی باز کرده 😂",
+    ],
+    
+    "دیوث": [
+        "جوووون 😍 کیو میگی؟",
+        "اسم نمی‌بریم ولی خودش حتماً فهمید 😂",
+        "تحقیقات وارد مرحله حساسی شد 🕵️",
+        "یه نفر زیادی مشکوکه 👀",
+        "دادگاه هنوز در حال بررسیه 🤣",
+        "متهم از محل متواری شده 💀",
+        "یکی انگار خودش رو در معرض اتهام قرار داده 😂",
+        "فعلاً هویت فرد موردنظر محرمانه باقی می‌مونه 🤫",
+    ],
+    
+    "پوفیوز": [
+        "یه نفر خیلی اعتمادبه‌نفس داره انگار 😂",
+        "اسم نمی‌بریم، احتراماً 😌",
+        "پرونده جدیدی روی میز قرار گرفت 🕵️",
+        "باز یکی داشت خودش رو معرفی می‌کرد 🤣",
+        "همه ساکت، تحقیقات ادامه داره 👀",
+        "یه لحظه سکوت برای فرد موردنظر 😂",
+        "اتهام ثبت شد؛ متهم می‌تونه از خودش دفاع کنه 💀",
+        "این پرونده بوی دردسر میده 🤣",
+    ],
 
     # -----------------------------------------------------
     # کونی
@@ -385,13 +447,29 @@ JOKES = [
     "منطق از این گروه استعفا داده و هنوز جایگزین پیدا نکرده.",
 ]
 
+# =========================================================
+# پیام‌های مربوط به سکوت ۱۵ ساعته
+# =========================================================
+
+INACTIVITY_MESSAGES = [
+    "🔔 بیش از ۱۵ ساعت گذشت و هنوز کسی چیزی نگفته؟ گروه مُرده یا همه رفتن سر کار؟ 💀",
+    "۱۵ ساعت سکوت... بچه‌ها زنده‌اید یا گروه رو تحریم کردید؟ 😂",
+    "🚨 هشدار سکوت: بیش از ۱۵ ساعت هیچ فعالیتی ثبت نشده!",
+    "یکی یه چیزی بگه، دارم فکر می‌کنم گروه منحل شده 👀",
+    "۱۵ ساعت گذشت... حتی منِ ربات هم دلم برای چرت‌وپرت‌هاتون تنگ شد 😂",
+    "🔕 سکوت بیش از حد مجاز! لطفاً حداقل یک چرت ارسال کنید 🤣",
+    "گروه عزیز، اگر کسی زنده است یک علامت حیات بفرسته 💀",
+    "این سکوت مشکوکه... یکی یه «سلام» بگه ببینیم هنوز کسی اینجاست 😂",
+    "۱۵ ساعت بدون چرت‌وپرت؟ این گروه دیگه اون گروه سابق نیست 😭",
+    "من فکر کردم اینترنت قطع شده، بعد دیدم مشکل از خود شماهاست 💀",
+]
+
 
 # =========================================================
-# STATS
+# مدیریت آمار
 # =========================================================
 
 def load_stats():
-
     if not os.path.exists(STATS_FILE):
         return {
             "total": 0,
@@ -399,17 +477,10 @@ def load_stats():
         }
 
     try:
-
-        with open(
-            STATS_FILE,
-            "r",
-            encoding="utf-8"
-        ) as file:
-
+        with open(STATS_FILE, "r", encoding="utf-8") as file:
             return json.load(file)
 
     except Exception:
-
         return {
             "total": 0,
             "triggers": {}
@@ -417,13 +488,7 @@ def load_stats():
 
 
 def save_stats(data):
-
-    with open(
-        STATS_FILE,
-        "w",
-        encoding="utf-8"
-    ) as file:
-
+    with open(STATS_FILE, "w", encoding="utf-8") as file:
         json.dump(
             data,
             file,
@@ -436,7 +501,6 @@ stats = load_stats()
 
 
 def increase_stat(trigger):
-
     stats["total"] += 1
 
     if trigger not in stats["triggers"]:
@@ -448,7 +512,63 @@ def increase_stat(trigger):
 
 
 # =========================================================
-# NORMALIZE TEXT
+# مدیریت آخرین فعالیت گروه
+# =========================================================
+
+def load_last_activity():
+
+    if not os.path.exists(LAST_ACTIVITY_FILE):
+        return {}
+
+    try:
+        with open(
+            LAST_ACTIVITY_FILE,
+            "r",
+            encoding="utf-8"
+        ) as file:
+
+            return json.load(file)
+
+    except Exception:
+        return {}
+
+
+def save_last_activity(data):
+
+    with open(
+        LAST_ACTIVITY_FILE,
+        "w",
+        encoding="utf-8"
+    ) as file:
+
+        json.dump(
+            data,
+            file,
+            ensure_ascii=False,
+            indent=4
+        )
+
+
+last_activity = load_last_activity()
+
+
+def update_activity(chat_id):
+
+    chat_id = str(chat_id)
+
+    last_activity[chat_id] = {
+        "last_message": datetime.now(
+            timezone.utc
+        ).isoformat(),
+
+        "warned": False
+    }
+
+    save_last_activity(last_activity)
+
+
+# =========================================================
+# نرمال‌سازی متن
 # =========================================================
 
 def normalize_text(text):
@@ -469,7 +589,7 @@ def normalize_text(text):
 
 
 # =========================================================
-# GROUP MESSAGE HANDLER
+# Listener اصلی گروه
 # =========================================================
 
 async def group_listener(
@@ -483,20 +603,26 @@ async def group_listener(
     if not update.message.text:
         return
 
+    # ثبت آخرین فعالیت گروه
+    update_activity(
+        update.effective_chat.id
+    )
+
     text = normalize_text(
         update.message.text
     )
 
-
     # -----------------------------------------------------
-    # MEMBER NAMES
+    # بررسی اسم اعضا
     # -----------------------------------------------------
 
     for member in MEMBERS:
 
         if member in text:
 
-            replies = MEMBER_RESPONSES.get(member)
+            replies = MEMBER_RESPONSES.get(
+                member
+            )
 
             if replies:
 
@@ -508,9 +634,8 @@ async def group_listener(
 
                 return
 
-
     # -----------------------------------------------------
-    # TRIGGERS
+    # بررسی کلمات خاص
     # -----------------------------------------------------
 
     for trigger, replies in RESPONSES.items():
@@ -525,12 +650,10 @@ async def group_listener(
 
             return
 
-
     # -----------------------------------------------------
-    # RANDOM CHAOS
+    # Chaos Mode
     # -----------------------------------------------------
 
-    # احتمال بسیار کم برای ورود خودکار ربات
     if random.random() < 0.01:
 
         await update.message.reply_text(
@@ -539,7 +662,7 @@ async def group_listener(
 
 
 # =========================================================
-# /ROAST
+# /roast
 # =========================================================
 
 async def roast_command(
@@ -549,13 +672,19 @@ async def roast_command(
 
     if context.args:
 
-        name = " ".join(context.args)
+        name = " ".join(
+            context.args
+        )
 
     else:
 
-        name = random.choice(MEMBERS)
+        name = random.choice(
+            MEMBERS
+        )
 
-    roast = random.choice(ROASTS)
+    roast = random.choice(
+        ROASTS
+    )
 
     await update.message.reply_text(
         roast.format(name=name)
@@ -563,7 +692,7 @@ async def roast_command(
 
 
 # =========================================================
-# /JUDGE
+# /judge
 # =========================================================
 
 async def judge_command(
@@ -571,7 +700,9 @@ async def judge_command(
     context: ContextTypes.DEFAULT_TYPE
 ):
 
-    person = random.choice(MEMBERS)
+    person = random.choice(
+        MEMBERS
+    )
 
     messages = [
 
@@ -593,7 +724,7 @@ async def judge_command(
 
 
 # =========================================================
-# /QUOTE
+# /quote
 # =========================================================
 
 async def quote_command(
@@ -607,7 +738,7 @@ async def quote_command(
 
 
 # =========================================================
-# /JOKE
+# /joke
 # =========================================================
 
 async def joke_command(
@@ -621,7 +752,7 @@ async def joke_command(
 
 
 # =========================================================
-# /STATS
+# /stats
 # =========================================================
 
 async def stats_command(
@@ -639,13 +770,11 @@ async def stats_command(
 
         return
 
-
     sorted_stats = sorted(
         stats["triggers"].items(),
         key=lambda item: item[1],
         reverse=True
     )
-
 
     lines = [
         "📊 آمار رسمی گروه",
@@ -654,13 +783,11 @@ async def stats_command(
         "",
     ]
 
-
     for trigger, count in sorted_stats[:15]:
 
         lines.append(
             f"• {trigger}: {count}"
         )
-
 
     await update.message.reply_text(
         "\n".join(lines)
@@ -668,7 +795,7 @@ async def stats_command(
 
 
 # =========================================================
-# /RESETSTATS
+# /resetstats
 # =========================================================
 
 async def reset_stats_command(
@@ -692,7 +819,7 @@ async def reset_stats_command(
 
 
 # =========================================================
-# /HELP
+# /help
 # =========================================================
 
 async def help_command(
@@ -732,6 +859,9 @@ async def help_command(
 ضمناً بعضی کلمات خاص باعث میشن
 ربات خودش وارد بحث بشه 😎
 
+⏰ اگر گروه بیشتر از ۱۵ ساعت ساکت بمونه،
+ربات خودش برای نجات گروه وارد عمل میشه.
+
 🔥 Chaos Mode: ON
 """
 
@@ -742,7 +872,64 @@ async def help_command(
 
 
 # =========================================================
-# MAIN
+# سیستم تشخیص سکوت گروه
+# =========================================================
+
+async def inactivity_checker(
+    context: ContextTypes.DEFAULT_TYPE
+):
+
+    now = datetime.now(
+        timezone.utc
+    )
+
+    for chat_id, data in list(
+        last_activity.items()
+    ):
+
+        try:
+
+            last_message = datetime.fromisoformat(
+                data["last_message"]
+            )
+
+        except (
+            KeyError,
+            ValueError
+        ):
+
+            continue
+
+        elapsed_hours = (
+            now - last_message
+        ).total_seconds() / 3600
+
+        # -------------------------------------------------
+        # اگر بیشتر از 15 ساعت گذشته باشد
+        # -------------------------------------------------
+
+        if (
+            elapsed_hours >= INACTIVITY_HOURS
+            and not data.get("warned", False)
+        ):
+
+            await context.bot.send_message(
+                chat_id=int(chat_id),
+                text=random.choice(
+                    INACTIVITY_MESSAGES
+                )
+            )
+
+            # جلوگیری از ارسال چند پیام پشت سر هم
+            last_activity[chat_id]["warned"] = True
+
+    save_last_activity(
+        last_activity
+    )
+
+
+# =========================================================
+# اجرای ربات
 # =========================================================
 
 def main():
@@ -753,7 +940,6 @@ def main():
             "BOT_TOKEN environment variable is not set!"
         )
 
-
     app = (
         Application
         .builder()
@@ -761,9 +947,8 @@ def main():
         .build()
     )
 
-
     # -----------------------------------------------------
-    # COMMAND HANDLERS
+    # دستورات
     # -----------------------------------------------------
 
     app.add_handler(
@@ -815,9 +1000,8 @@ def main():
         )
     )
 
-
     # -----------------------------------------------------
-    # GROUP MESSAGE HANDLER
+    # دریافت پیام‌های عادی
     # -----------------------------------------------------
 
     app.add_handler(
@@ -827,16 +1011,28 @@ def main():
         )
     )
 
+    # -----------------------------------------------------
+    # فعال کردن سیستم بررسی سکوت
+    #
+    # هر 30 دقیقه یک بار بررسی می‌کند
+    # -----------------------------------------------------
+
+    app.job_queue.run_repeating(
+        inactivity_checker,
+        interval=60 * 30,
+        first=60
+    )
 
     print("🤖 Bot Started...")
     print("🔥 Chaos Mode: ON")
-
+    print("⏰ Inactivity Monitor: ON")
+    print("🕐 Inactivity Threshold: 15 hours")
 
     app.run_polling()
 
 
 # =========================================================
-# START
+# نقطه شروع
 # =========================================================
 
 if __name__ == "__main__":
