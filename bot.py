@@ -892,6 +892,12 @@ async def help_command(
 /resetstats
 پاک کردن آمار.
 
+/on
+روشن کردن ربات
+
+/off
+خاموش کردن ربات
+
 /help
 نمایش راهنما.
 
