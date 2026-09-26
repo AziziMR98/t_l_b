@@ -982,19 +982,7 @@ async def inactivity_checker(
 
 def main():
 
-    app.add_handler(
-        CommandHandler(
-            "on",
-            on_command
-        )
-    )
-    
-    app.add_handler(
-        CommandHandler(
-            "off",
-            off_command
-        )
-    )
+
     if not TOKEN:
 
         raise RuntimeError(
@@ -1011,7 +999,19 @@ def main():
     # -----------------------------------------------------
     # دستورات
     # -----------------------------------------------------
-
+    app.add_handler(
+        CommandHandler(
+            "on",
+            on_command
+        )
+    )
+    
+    app.add_handler(
+        CommandHandler(
+            "off",
+            off_command
+        )
+    )
     app.add_handler(
         CommandHandler(
             "roast",
