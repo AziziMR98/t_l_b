@@ -25,6 +25,8 @@ LAST_ACTIVITY_FILE = "last_activity.json"
 # اگر گروه بیشتر از این مقدار ساعت ساکت باشد، ربات واکنش می‌دهد
 INACTIVITY_HOURS = 15
 
+BOT_ENABLED = True
+
 
 # =========================================================
 # اعضای گروه
@@ -596,6 +598,8 @@ async def group_listener(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE
 ):
+    if not BOT_ENABLED:
+        return
 
     if not update.message:
         return
@@ -817,6 +821,41 @@ async def reset_stats_command(
         "از صفر شروع کنید ببینیم کی بیشتر چرت میگه 😂"
     )
 
+# =========================================================
+# / off 
+# =========================================================
+
+async def off_command(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+
+    global BOT_ENABLED
+
+    BOT_ENABLED = False
+
+    await update.message.reply_text(
+        "🔇 ربات خاموش شد.\n"
+        "فعلاً دخالتی در بحث‌ها نمی‌کنم 😌"
+    )
+
+# =========================================================
+# / on 
+# =========================================================
+
+async def on_command(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+
+    global BOT_ENABLED
+
+    BOT_ENABLED = True
+
+    await update.message.reply_text(
+        "🔊 ربات روشن شد.\n"
+        "دوباره آماده چرت‌وپرت‌گویی هستم 😂"
+    )
 
 # =========================================================
 # /help
@@ -879,6 +918,9 @@ async def inactivity_checker(
     context: ContextTypes.DEFAULT_TYPE
 ):
 
+    if not BOT_ENABLED:
+        return
+
     now = datetime.now(
         timezone.utc
     )
@@ -934,6 +976,19 @@ async def inactivity_checker(
 
 def main():
 
+    app.add_handler(
+        CommandHandler(
+            "on",
+            on_command
+        )
+    )
+    
+    app.add_handler(
+        CommandHandler(
+            "off",
+            off_command
+        )
+    )
     if not TOKEN:
 
         raise RuntimeError(
